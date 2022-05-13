@@ -1,0 +1,37 @@
+import torch
+def get_P_z_SigamP(r):
+    # TODO: global_cp_loc_grid
+    global_cp_loc_grid = [
+                torch.linspace(s + (e - s) / 16, e - (e - s) / 16, 8)
+                for s, e in ((0, 8), (0, 8))
+            ]
+    global_cp_loc_grid = torch.meshgrid(global_cp_loc_grid)
+    global_cp_loc = torch.stack(global_cp_loc_grid, 2)[:, :, [1, 0]]
+    global_cp_loc = torch.flatten(global_cp_loc, start_dim=0,
+                                  end_dim=1).float()
+    # TODO: local_cp_loc_grid
+    local_cp_loc_grid = [
+                torch.linspace(s + (s - e) / 20, e - (s - e) / 20, 10)
+                for s, e in ((2, 6), (2, 6))
+            ]
+    local_cp_loc_grid = torch.meshgrid(local_cp_loc_grid)
+    local_cp_loc = torch.stack(local_cp_loc_grid, 2)[:, :, [1, 0]]
+    local_cp_loc = torch.flatten(local_cp_loc, start_dim=0,
+                                 end_dim=1).float()
+
+    # TODO: local_cp_loc扩展并拼接
+    local_cp_loc = (local_cp_loc - 4) * torch.tensor([1, 1], dtype=torch.float) + 4
+    cpoint_pos = torch.cat([global_cp_loc, local_cp_loc], 0)
+
+    # TODO: 计算预置矩阵
+    num_cp = cpoint_pos.size()[0]
+    scppos = cpoint_pos.unsqueeze(1).repeat(1, num_cp, 1)
+    despos = cpoint_pos.unsqueeze(0).repeat(num_cp, 1, 1)
+    dis = torch.norm(scppos - despos, dim=2) / r
+    filter_dis = dis < 1
+    weight = torch.pow(1 - dis, 4) * (4 * dis + 1)
+    weight_1 = (weight * filter_dis.float())
+    return weight_1
+
+weight = get_P_z_SigamP(1.5)
+print(weight.shape)
